@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.yiddishvoice.app",
     "productName": "Yiddish Voice",
+    "icon": "icon.png",
     "directories": {
       "output": "dist"
     },
@@ -42,19 +43,13 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "portable",
           "arch": [
             "x64"
           ]
         }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Yiddish Voice"
+      ],
+      "signAndEditExecutable": false
     }
   }
 }

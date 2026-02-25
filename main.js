@@ -154,8 +154,8 @@ function openSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 450,
-    height: 580,
+    width: 340,
+    height: 220,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -214,14 +214,7 @@ function openHistoryWindow() {
 // System tray
 // ---------------------------------------------------------------------------
 function createTray() {
-  const icon = nativeImage.createFromDataURL(
-    "data:image/png;base64," +
-      "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA" +
-      "ZElEQVR42mL8z8BQz0BFAMUABC4DAwMjIyMDEwMVABMDFQCl" +
-      "BjAxUAEMaQNYWFgYGBgYGP7//8/AwMDAQA0XMDIyMjBRA1Bq" +
-      "ACMjIwMTNQClBjBRA1DdBUzUAJQawERFzAAALxcRZwWMf+0A" +
-      "AAAASUVORK5CYII="
-  );
+  const icon = nativeImage.createFromPath(path.join(__dirname, "icon.png"));
 
   tray = new Tray(icon);
   tray.setToolTip("Yiddish Voice");

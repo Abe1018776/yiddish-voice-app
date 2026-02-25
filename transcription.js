@@ -1,6 +1,14 @@
 const { net } = require('electron');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const { transcribeWithVertexAI } = require('./vertex-transcription');
+
+const LOG_FILE = path.join(require('os').homedir(), 'yiddish-debug.log');
+function debugLog(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try { fs.appendFileSync(LOG_FILE, line); } catch(e) {}
+}
 
 /**
  * Makes an HTTPS request using Electron's net module (Chromium network stack).
@@ -355,11 +363,37 @@ async function transcribeWithRunpodOmniasr(audioBuffer, config) {
  * @param {object} config - Configuration object
  * @returns {Promise<string>} Transcription text
  */
+/**
+ * Ensure the given model is loaded in the faster-whisper-server.
+ * Calls POST /api/ps/{model} which is a no-op if already loaded.
+ */
+async function ensurePodModelLoaded(baseUrl, model) {
+  const encodedModel = encodeURIComponent(model);
+  const loadUrl = `${baseUrl}/api/ps/${encodedModel}`;
+  await new Promise((resolve) => {
+    const parsed = new URL(loadUrl);
+    const req = https.request({
+      hostname: parsed.hostname,
+      port: 443,
+      path: parsed.pathname,
+      method: 'POST',
+      headers: { 'Content-Length': 0 },
+    }, (res) => {
+      res.resume(); // drain
+      res.on('end', resolve);
+    });
+    req.on('error', () => resolve()); // non-fatal — proceed anyway
+    req.end();
+  });
+}
+
 async function transcribeWithRunpodPod(audioBuffer, config) {
   const { runpodPodUrl } = config;
   if (!runpodPodUrl) throw new Error('Missing runpodPodUrl in config');
 
-  const url = runpodPodUrl.replace(/\/$/, '') + '/v1/audio/transcriptions';
+  const baseUrl = runpodPodUrl.replace(/\/$/, '');
+  const model = 'ivrit-ai/yi-whisper-large-v3-ct2';
+  const url = baseUrl + '/v1/audio/transcriptions';
 
   // Build multipart form data
   const boundary = '----FormBoundary' + Date.now().toString(36) + Math.random().toString(36);
@@ -378,7 +412,7 @@ async function transcribeWithRunpodPod(audioBuffer, config) {
   parts.push(Buffer.from(
     '--' + boundary + '\r\n' +
     'Content-Disposition: form-data; name="model"\r\n\r\n' +
-    'ivrit-ai/yi-whisper-large-v3\r\n'
+    'ivrit-ai/yi-whisper-large-v3-ct2\r\n'
   ));
 
   // Language part
@@ -400,15 +434,40 @@ async function transcribeWithRunpodPod(audioBuffer, config) {
 
   const payload = Buffer.concat(parts);
 
-  // Use Electron's net module (Chromium stack) to bypass web filters
-  const { statusCode, body: raw } = await electronRequest('POST', url, payload, {
-    'Content-Type': 'multipart/form-data; boundary=' + boundary,
+  debugLog(`POD: POST ${url} payload=${payload.length} bytes`);
+
+  // Ensure the model is loaded in memory (no-op if already loaded)
+  await ensurePodModelLoaded(baseUrl, model);
+
+  // Use Node.js https directly (proxy.runpod.net is whitelisted in web filter)
+  const raw = await new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.request({
+      hostname: parsed.hostname,
+      port: 443,
+      path: parsed.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+        'Content-Length': payload.length,
+      },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    });
+    req.setTimeout(300000, () => { req.destroy(); reject(new Error('Pod request timed out')); });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
   });
+
+  debugLog(`POD: response body=${raw.substring(0, 300)}`);
 
   try {
     const json = JSON.parse(raw);
     if (json.text) return json.text.trim();
-    else throw new Error('No text in pod response: ' + raw);
+    throw new Error('No text in pod response: ' + raw);
   } catch (e) {
     if (e.message.startsWith('No text')) throw e;
     throw new Error('Pod response parse error: ' + raw);
@@ -461,6 +520,8 @@ async function transcribe(audioBuffer, provider, config) {
 
     return { text, provider, latencyMs };
   } catch (err) {
+    console.error(`[transcribe] ${provider} error:`, err.message);
+    debugLog(`ERROR [${provider}]: ${err.message}\n${err.stack}`);
     return { text: '', error: `[${provider}] ${err.message}` };
   }
 }

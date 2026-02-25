@@ -1,26 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_CONFIG = {
-  provider: 'gemini',
-  geminiApiKey: '',
-  geminiModel: 'gemini-2.0-flash',
-  runpodApiKey: '',
-  whisperEndpointId: '',
-  omnisarEndpointId: '',
-  vertexEnabled: false,
-  vertexAuthMethod: 'api-key',
-  vertexProjectId: '',
-  vertexRegion: 'us-central1',
-  vertexModel: 'gemini-2.0-flash',
-  vertexEndpointId: '',
-  vertexApiKey: '',
-  vertexServiceAccountPath: '',
-  runpodPodEnabled: false,
-  runpodPodUrl: '',
-  hotkey: 'Ctrl+Shift+Space',
+// These values are locked and cannot be changed by users.
+const LOCKED_CONFIG = {
+  provider: 'runpod-pod',
+  runpodPodUrl: 'https://83l8gsdzgy1m0w-8000.proxy.runpod.net',
   language: 'yi',
-  autoPlace: true
+};
+
+const DEFAULT_CONFIG = {
+  hotkey: 'Ctrl+Shift+Space',
+  autoPlace: true,
 };
 
 let configPath = null;
@@ -59,13 +49,13 @@ function load() {
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
     const stored = JSON.parse(raw);
-    // Merge with defaults so newly-added keys are always present
-    const merged = { ...DEFAULT_CONFIG, ...stored };
+    // Merge with defaults, then always override with locked values
+    const merged = { ...DEFAULT_CONFIG, ...stored, ...LOCKED_CONFIG };
     return merged;
   } catch (err) {
     // Corrupted file — reset to defaults
     save(DEFAULT_CONFIG);
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG, ...LOCKED_CONFIG };
   }
 }
 
