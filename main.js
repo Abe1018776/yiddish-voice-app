@@ -431,11 +431,30 @@ function setupIpcHandlers() {
   });
 
   // -- Complete first-run setup ----------------------------------------------
-  ipcMain.handle("complete-setup", (_event, { email }) => {
+  ipcMain.handle("complete-setup", async (_event, { email }) => {
     const cfg = config.load();
     cfg.userEmail = email || '';
     cfg.setupComplete = true;
     config.save(cfg);
+
+    // Submit email to registration form (fire-and-forget)
+    if (email) {
+      const https = require("https");
+      const body = `entry.813690680=${encodeURIComponent(email)}`;
+      const req = https.request({
+        hostname: "docs.google.com",
+        path: "/forms/d/e/1FAIpQLSdY6sbIQOaFC2-cT3EosSGc-N3WcxfLNQimG7nB5gJs-8WsTQ/formResponse",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(body),
+        },
+      });
+      req.on("error", () => {}); // non-fatal
+      req.write(body);
+      req.end();
+    }
+
     return { success: true };
   });
 
