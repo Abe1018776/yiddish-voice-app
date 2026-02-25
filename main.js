@@ -499,6 +499,12 @@ app.whenReady().then(() => {
   createTray();
   registerGlobalShortcut();
   setupIpcHandlers();
+
+  // Show registration screen on first launch
+  const cfg = config.load();
+  if (!cfg.setupComplete) {
+    openSetupWindow();
+  }
 });
 
 // Focus existing window when second instance is launched
