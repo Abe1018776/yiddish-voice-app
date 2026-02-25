@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.output
+vertex-service-account.json
+deploy-pod.js
+.env
+*.log
+
+# Test/debug files
+_test_*
+_notepad_test*
+test-*
+paste-test*
+paste-to-target*
+get-foreground-hwnd*

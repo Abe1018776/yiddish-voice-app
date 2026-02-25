@@ -1,0 +1,60 @@
+{
+  "name": "yiddish-voice-app",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "Yiddish voice transcription desktop app",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"No tests yet\" && exit 0",
+    "dist": "electron-builder --win"
+  },
+  "keywords": [
+    "yiddish",
+    "transcription",
+    "voice",
+    "speech-to-text"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron/packager": "^19.0.5",
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.yiddishvoice.app",
+    "productName": "Yiddish Voice",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "transcription.js",
+      "config.js",
+      "settings.html",
+      "history.html",
+      "vertex-auth.js",
+      "vertex-transcription.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Yiddish Voice"
+    }
+  }
+}

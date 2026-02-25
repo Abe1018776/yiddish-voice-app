@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Yiddish Voice</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      width: 450px;
+      height: 550px;
+      overflow-y: auto;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+
+    .container {
+      padding: 24px 28px 20px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-header {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #4a9eff;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #ccc;
+      margin-bottom: 5px;
+    }
+
+    .field input[type="text"],
+    .field input[type="password"],
+    .field select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #16163a;
+      border: 1px solid #2e2e52;
+      border-radius: 6px;
+      color: #eee;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input[type="text"]:focus,
+    .field input[type="password"]:focus,
+    .field select:focus {
+      border-color: #4a9eff;
+    }
+
+    .field input[type="text"]::placeholder,
+    .field input[type="password"]::placeholder {
+      color: #555;
+    }
+
+    .field select option {
+      background: #16163a;
+      color: #eee;
+    }
+
+    .field-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .field-checkbox input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #16163a;
+      border: 1px solid #2e2e52;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .field-checkbox input[type="checkbox"]:checked {
+      background: #4a9eff;
+      border-color: #4a9eff;
+    }
+
+    .field-checkbox input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 5px;
+      height: 9px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .field-checkbox label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #ccc;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #2a2a4a;
+    }
+
+    .btn {
+      padding: 8px 22px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn:active {
+      opacity: 0.85;
+    }
+
+    .btn-cancel {
+      background: #2a2a4a;
+      color: #ccc;
+    }
+
+    .btn-cancel:hover {
+      background: #353560;
+    }
+
+    .btn-save {
+      background: #4a9eff;
+      color: #fff;
+    }
+
+    .btn-save:hover {
+      background: #3b8be8;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2e2e52;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3e3e62;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Settings</h1>
+
+    <!-- Transcription Provider -->
+    <div class="section">
+      <div class="section-header">Transcription Provider</div>
+      <div class="field">
+        <label for="defaultProvider">Default Provider</label>
+        <select id="defaultProvider">
+          <option value="gemini">Gemini (Fine-tuned)</option>
+          <option value="gemini-direct">Gemini 3.1 (Regular)</option>
+          <option value="runpod-whisper">RunPod-Whisper</option>
+          <option value="runpod-omniasr">RunPod-OmniASR</option>
+          <option value="vertex">Vertex AI (Fine-tuned)</option>
+          <option value="runpod-pod">RunPod Pod (24/7)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="section">
+      <div class="section-header">API Keys</div>
+      <div class="field">
+        <label for="geminiApiKey">Gemini API Key</label>
+        <input type="password" id="geminiApiKey" placeholder="Enter Gemini API key">
+      </div>
+      <div class="field">
+        <label for="geminiModelId">Gemini Model ID</label>
+        <input type="text" id="geminiModelId" placeholder="Custom fine-tuned model ID">
+      </div>
+      <div class="field">
+        <label for="runpodApiKey">RunPod API Key</label>
+        <input type="password" id="runpodApiKey" placeholder="Enter RunPod API key">
+      </div>
+      <div class="field">
+        <label for="whisperEndpointId">Whisper Endpoint ID</label>
+        <input type="text" id="whisperEndpointId" placeholder="RunPod Whisper endpoint ID">
+      </div>
+      <div class="field">
+        <label for="omniastEndpointId">OmniASR Endpoint ID</label>
+        <input type="text" id="omniastEndpointId" placeholder="RunPod OmniASR endpoint ID">
+      </div>
+      <div class="field">
+        <label for="runpodPodUrl">RunPod Pod URL</label>
+        <input type="text" id="runpodPodUrl" placeholder="https://pod-id-8000.proxy.runpod.net">
+      </div>
+    </div>
+
+    <!-- Vertex AI -->
+    <div class="section">
+      <div class="section-header">Vertex AI</div>
+      <div class="field-checkbox">
+        <input type="checkbox" id="vertexEnabled">
+        <label for="vertexEnabled">Enable Vertex AI</label>
+      </div>
+      <div class="field">
+        <label for="vertexAuthMethod">Auth Method</label>
+        <select id="vertexAuthMethod">
+          <option value="api-key">API Key</option>
+          <option value="service-account">Service Account</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="vertexProjectId">Project ID</label>
+        <input type="text" id="vertexProjectId" placeholder="your-gcp-project-id">
+      </div>
+      <div class="field">
+        <label for="vertexRegion">Region</label>
+        <input type="text" id="vertexRegion" placeholder="us-central1">
+      </div>
+      <div class="field">
+        <label for="vertexModel">Model ID</label>
+        <input type="text" id="vertexModel" placeholder="gemini-2.0-flash or numeric model ID">
+      </div>
+      <div class="field">
+        <label for="vertexEndpointId">Endpoint ID (for fine-tuned models)</label>
+        <input type="text" id="vertexEndpointId" placeholder="Numeric endpoint ID from Vertex AI">
+      </div>
+      <div class="field">
+        <label for="vertexApiKey">Vertex API Key</label>
+        <input type="password" id="vertexApiKey" placeholder="For API key auth">
+      </div>
+      <div class="field">
+        <label for="vertexServiceAccountPath">Service Account Path</label>
+        <input type="text" id="vertexServiceAccountPath" placeholder="C:\path\to\service-account.json">
+      </div>
+    </div>
+
+    <!-- Behavior -->
+    <div class="section">
+      <div class="section-header">Behavior</div>
+      <div class="field">
+        <label for="globalHotkey">Global Hotkey</label>
+        <input type="text" id="globalHotkey" placeholder="Ctrl+Shift+Space">
+      </div>
+      <div class="field-checkbox">
+        <input type="checkbox" id="autoPlaceText">
+        <label for="autoPlaceText">Auto-place text at cursor</label>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="buttons">
+      <button class="btn btn-cancel" id="btnCancel">Cancel</button>
+      <button class="btn btn-save" id="btnSave">Save</button>
+    </div>
+  </div>
+
+  <script>
+    const api = window.electronAPI;
+
+    const fields = {
+      defaultProvider: document.getElementById('defaultProvider'),
+      geminiApiKey: document.getElementById('geminiApiKey'),
+      geminiModelId: document.getElementById('geminiModelId'),
+      runpodApiKey: document.getElementById('runpodApiKey'),
+      whisperEndpointId: document.getElementById('whisperEndpointId'),
+      omniasrEndpointId: document.getElementById('omniastEndpointId'),
+      globalHotkey: document.getElementById('globalHotkey'),
+      autoPlaceText: document.getElementById('autoPlaceText'),
+      vertexEnabled: document.getElementById('vertexEnabled'),
+      vertexAuthMethod: document.getElementById('vertexAuthMethod'),
+      vertexProjectId: document.getElementById('vertexProjectId'),
+      vertexRegion: document.getElementById('vertexRegion'),
+      vertexModel: document.getElementById('vertexModel'),
+      vertexEndpointId: document.getElementById('vertexEndpointId'),
+      vertexApiKey: document.getElementById('vertexApiKey'),
+      vertexServiceAccountPath: document.getElementById('vertexServiceAccountPath'),
+      runpodPodUrl: document.getElementById('runpodPodUrl'),
+    };
+
+    async function loadConfig() {
+      try {
+        const config = await api.invoke('get-config');
+        if (!config) return;
+
+        fields.defaultProvider.value = config.provider || 'gemini';
+        fields.geminiApiKey.value = config.geminiApiKey || '';
+        fields.geminiModelId.value = config.geminiModel || '';
+        fields.runpodApiKey.value = config.runpodApiKey || '';
+        fields.whisperEndpointId.value = config.whisperEndpointId || '';
+        fields.omniasrEndpointId.value = config.omnisarEndpointId || '';
+        fields.globalHotkey.value = config.hotkey || 'Ctrl+Shift+Space';
+        fields.autoPlaceText.checked = config.autoPlace !== false;
+        fields.vertexEnabled.checked = config.vertexEnabled || false;
+        fields.vertexAuthMethod.value = config.vertexAuthMethod || 'api-key';
+        fields.vertexProjectId.value = config.vertexProjectId || '';
+        fields.vertexRegion.value = config.vertexRegion || 'us-central1';
+        fields.vertexModel.value = config.vertexModel || '';
+        fields.vertexEndpointId.value = config.vertexEndpointId || '';
+        fields.vertexApiKey.value = config.vertexApiKey || '';
+        fields.vertexServiceAccountPath.value = config.vertexServiceAccountPath || '';
+        fields.runpodPodUrl.value = config.runpodPodUrl || '';
+      } catch (err) {
+        console.error('Failed to load config:', err);
+      }
+    }
+
+    function gatherConfig() {
+      return {
+        provider: fields.defaultProvider.value,
+        geminiApiKey: fields.geminiApiKey.value.trim(),
+        geminiModel: fields.geminiModelId.value.trim(),
+        runpodApiKey: fields.runpodApiKey.value.trim(),
+        whisperEndpointId: fields.whisperEndpointId.value.trim(),
+        omnisarEndpointId: fields.omniasrEndpointId.value.trim(),
+        hotkey: fields.globalHotkey.value.trim() || 'Ctrl+Shift+Space',
+        autoPlace: fields.autoPlaceText.checked,
+        vertexEnabled: fields.vertexEnabled.checked,
+        vertexAuthMethod: fields.vertexAuthMethod.value,
+        vertexProjectId: fields.vertexProjectId.value.trim(),
+        vertexRegion: fields.vertexRegion.value.trim(),
+        vertexModel: fields.vertexModel.value.trim(),
+        vertexEndpointId: fields.vertexEndpointId.value.trim(),
+        vertexApiKey: fields.vertexApiKey.value.trim(),
+        vertexServiceAccountPath: fields.vertexServiceAccountPath.value.trim(),
+        runpodPodUrl: fields.runpodPodUrl.value.trim(),
+        language: 'yi',
+      };
+    }
+
+    document.getElementById('btnSave').addEventListener('click', async () => {
+      try {
+        const config = gatherConfig();
+        await api.invoke('save-config', config);
+        window.close();
+      } catch (err) {
+        console.error('Failed to save config:', err);
+      }
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      window.close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') window.close();
+    });
+
+    loadConfig();
+  </script>
+</body>
+</html>

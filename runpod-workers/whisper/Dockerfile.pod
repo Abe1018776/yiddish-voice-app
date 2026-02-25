@@ -1,0 +1,43 @@
+# RunPod GPU Pod - Always-On Whisper Inference Server (Yiddish Fine-Tuned)
+#
+# This Dockerfile builds an image for 24/7 RunPod Pod deployment.
+# It runs a FastAPI server that serves the yi-whisper-large-v3 model
+# via faster_whisper on a persistent GPU instance.
+#
+# The model is downloaded from Hugging Face at startup (or at build time
+# if you prefer to bake it in). To bake it in, uncomment the RUN line
+# below and the model will be cached inside the image.
+#
+# Build:
+#   docker build -f Dockerfile.pod -t whisper-pod .
+#
+# Run locally (for testing):
+#   docker run --gpus all -p 8000:8000 whisper-pod
+
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    faster-whisper \
+    fastapi \
+    uvicorn[standard] \
+    python-multipart
+
+# Copy the FastAPI server
+COPY server.py .
+
+# Environment variables
+ENV MODEL_PATH=ivrit-ai/yi-whisper-large-v3
+ENV DEVICE=cuda
+ENV COMPUTE_TYPE=float16
+ENV PYTHONUNBUFFERED=1
+
+# Optional: pre-download the model into the image so startup is instant.
+# Uncomment the next line to bake the model in at build time:
+# RUN python -c "from faster_whisper import WhisperModel; WhisperModel('ivrit-ai/yi-whisper-large-v3', device='cpu', compute_type='int8')"
+
+EXPOSE 8000
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
