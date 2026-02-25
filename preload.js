@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'history-clear',
       'history-delete',
       'copy-to-clipboard',
+      'select-file',
     ];
     if (allowed.includes(channel)) {
       return ipcRenderer.invoke(channel, data);

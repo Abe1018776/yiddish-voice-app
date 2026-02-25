@@ -15,8 +15,8 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #1a1a2e;
       color: #eee;
-      width: 340px;
-      height: 220px;
+      width: 400px;
+      height: 280px;
       overflow: hidden;
       user-select: none;
       -webkit-app-region: no-drag;
@@ -65,6 +65,58 @@
 
     .field input[type="text"]::placeholder {
       color: #555;
+    }
+
+    .field select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #16163a;
+      border: 1px solid #2e2e52;
+      border-radius: 6px;
+      color: #eee;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .field select:focus {
+      border-color: #4a9eff;
+    }
+
+    .file-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .file-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-browse {
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #2a2a4a;
+      color: #ccc;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn-browse:hover {
+      background: #353560;
+    }
+
+    .btn-browse:active {
+      opacity: 0.85;
     }
 
     .field-checkbox {
@@ -160,6 +212,22 @@
     <h1>Settings</h1>
 
     <div class="field">
+      <label for="provider">Provider</label>
+      <select id="provider">
+        <option value="runpod-pod">RunPod 24/7 (Default)</option>
+        <option value="vertex">Fine-tuned Yiddish Model (Vertex AI)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="vertexServiceAccountPath">Service Account JSON</label>
+      <div class="file-row">
+        <input type="text" id="vertexServiceAccountPath" placeholder="Path to service account JSON file">
+        <button class="btn-browse" id="btnBrowse">Browse...</button>
+      </div>
+    </div>
+
+    <div class="field">
       <label for="globalHotkey">Global Hotkey</label>
       <input type="text" id="globalHotkey" placeholder="Ctrl+Shift+Space">
     </div>
@@ -182,6 +250,8 @@
       try {
         const config = await api.invoke('get-config');
         if (!config) return;
+        document.getElementById('provider').value = config.provider || 'runpod-pod';
+        document.getElementById('vertexServiceAccountPath').value = config.vertexServiceAccountPath || '';
         document.getElementById('globalHotkey').value = config.hotkey || 'Ctrl+Shift+Space';
         document.getElementById('autoPlaceText').checked = config.autoPlace !== false;
       } catch (err) {
@@ -189,11 +259,18 @@
       }
     }
 
+    document.getElementById('btnBrowse').addEventListener('click', async () => {
+      const filePath = await api.invoke('select-file');
+      if (filePath) document.getElementById('vertexServiceAccountPath').value = filePath;
+    });
+
     document.getElementById('btnSave').addEventListener('click', async () => {
       try {
         const config = await api.invoke('get-config');
+        config.provider = document.getElementById('provider').value;
         config.hotkey = document.getElementById('globalHotkey').value.trim() || 'Ctrl+Shift+Space';
         config.autoPlace = document.getElementById('autoPlaceText').checked;
+        config.vertexServiceAccountPath = document.getElementById('vertexServiceAccountPath').value.trim();
         await api.invoke('save-config', config);
         window.close();
       } catch (err) {

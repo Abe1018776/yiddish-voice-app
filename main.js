@@ -41,6 +41,7 @@ process.on("unhandledRejection", (reason) => {
 let mainWindow = null;
 let settingsWindow = null;
 let historyWindow = null;
+let setupWindow = null;
 let tray = null;
 
 // ---------------------------------------------------------------------------
@@ -145,6 +146,39 @@ function createOverlayWindow() {
 }
 
 // ---------------------------------------------------------------------------
+// Setup / registration window (first run)
+// ---------------------------------------------------------------------------
+function openSetupWindow() {
+  if (setupWindow) {
+    setupWindow.focus();
+    return;
+  }
+
+  setupWindow = new BrowserWindow({
+    width: 380,
+    height: 280,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    closable: false,
+    title: "Welcome - Yiddish Voice",
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  setupWindow.setMenu(null);
+  setupWindow.loadFile("setup.html");
+
+  setupWindow.on("closed", () => {
+    setupWindow = null;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Settings window
 // ---------------------------------------------------------------------------
 function openSettingsWindow() {
@@ -154,8 +188,8 @@ function openSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 340,
-    height: 220,
+    width: 400,
+    height: 280,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -396,6 +430,15 @@ function setupIpcHandlers() {
     openSettingsWindow();
   });
 
+  // -- Complete first-run setup ----------------------------------------------
+  ipcMain.handle("complete-setup", (_event, { email }) => {
+    const cfg = config.load();
+    cfg.userEmail = email || '';
+    cfg.setupComplete = true;
+    config.save(cfg);
+    return { success: true };
+  });
+
   // -- Window mouse-event forwarding -----------------------------------------
   ipcMain.on("set-ignore-mouse", (_event, ignore) => {
     if (!mainWindow) return;
@@ -427,6 +470,18 @@ function setupIpcHandlers() {
   ipcMain.handle("copy-to-clipboard", (_event, text) => {
     clipboard.writeText(text);
     return { success: true };
+  });
+
+  // -- File picker -----------------------------------------------------------
+  ipcMain.handle("select-file", async () => {
+    const { dialog } = require("electron");
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [{ name: "JSON Files", extensions: ["json"] }],
+      title: "Select Service Account JSON",
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
   });
 }
 

@@ -3,14 +3,23 @@ const path = require('path');
 
 // These values are locked and cannot be changed by users.
 const LOCKED_CONFIG = {
-  provider: 'runpod-pod',
   runpodPodUrl: 'https://83l8gsdzgy1m0w-8000.proxy.runpod.net',
   language: 'yi',
+  // Vertex AI — owner's project (locked)
+  vertexAuthMethod: 'service-account',
+  vertexProjectId: 'fink-partnership',
+  vertexRegion: 'us-central1',
+  vertexModel: '2953172783485419520',
+  vertexEndpointId: '5718022314876993536',
 };
 
 const DEFAULT_CONFIG = {
+  provider: 'runpod-pod',
   hotkey: 'Ctrl+Shift+Space',
   autoPlace: true,
+  vertexServiceAccountPath: '',
+  userEmail: '',
+  setupComplete: false,
 };
 
 let configPath = null;
