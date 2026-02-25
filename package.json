@@ -36,6 +36,8 @@
       "config.js",
       "settings.html",
       "history.html",
+      "setup.html",
+      "icon.png",
       "vertex-auth.js",
       "vertex-transcription.js",
       "package.json"
