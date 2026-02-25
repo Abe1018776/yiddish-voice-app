@@ -437,6 +437,11 @@ function setupIpcHandlers() {
     cfg.setupComplete = true;
     config.save(cfg);
 
+    // Close the setup window from main process (closable:false blocks renderer window.close())
+    if (setupWindow && !setupWindow.isDestroyed()) {
+      setupWindow.destroy();
+    }
+
     // Submit email to registration form (fire-and-forget)
     if (email) {
       const https = require("https");
