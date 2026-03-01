@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'transcribe',
       'open-settings',
       'set-ignore-mouse',
+      'window-drag-start',
+      'move-window',
     ];
     if (allowed.includes(channel)) {
       ipcRenderer.send(channel, data);

@@ -473,6 +473,17 @@ function setupIpcHandlers() {
     }
   });
 
+  // -- Manual window drag (app-region drag doesn't work with focusable:false) -
+  ipcMain.on("window-drag-start", () => {
+    if (!mainWindow) return;
+    mainWindow.setIgnoreMouseEvents(false);
+  });
+
+  ipcMain.on("move-window", (_event, { x, y }) => {
+    if (!mainWindow) return;
+    mainWindow.setPosition(x, y);
+  });
+
   // -- History IPC handlers --------------------------------------------------
   ipcMain.handle("history-get", () => {
     return historyEntries;

@@ -40,7 +40,7 @@
       align-items: center;
       padding: 0 10px 0 14px;
       gap: 12px;
-      -webkit-app-region: drag;
+      cursor: grab;
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                   box-shadow 0.3s ease;
     }
@@ -56,7 +56,7 @@
 
     /* Mic Button */
     #mic-btn {
-      -webkit-app-region: no-drag;
+
       width: 44px;
       height: 44px;
       min-width: 44px;
@@ -204,7 +204,7 @@
 
     /* Provider selector */
     #provider-select {
-      -webkit-app-region: no-drag;
+
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
@@ -237,7 +237,7 @@
 
     /* Settings gear */
     #settings-btn {
-      -webkit-app-region: no-drag;
+
       width: 30px;
       height: 30px;
       min-width: 30px;
@@ -376,13 +376,48 @@
       return btoa(binary);
     }
 
-    // --- Mouse events for click-through transparency ---
+    // --- Mouse events for click-through transparency + manual drag ---
     const pillEl = document.getElementById('pill');
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
     pillEl.addEventListener('mouseenter', () => {
       api.send('set-ignore-mouse', false);
     });
     pillEl.addEventListener('mouseleave', () => {
-      api.send('set-ignore-mouse', true);
+      if (!isDragging) {
+        api.send('set-ignore-mouse', true);
+      }
+    });
+
+    pillEl.addEventListener('mousedown', (e) => {
+      // Only drag from the pill background, not from buttons/select
+      if (e.target.closest('button, select')) return;
+      isDragging = true;
+      dragStartX = e.screenX;
+      dragStartY = e.screenY;
+      pillEl.style.cursor = 'grabbing';
+      api.send('window-drag-start');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.screenX - dragStartX;
+      const dy = e.screenY - dragStartY;
+      dragStartX = e.screenX;
+      dragStartY = e.screenY;
+      // Get current window position and apply delta
+      const x = window.screenX + dx;
+      const y = window.screenY + dy;
+      api.send('move-window', { x, y });
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        pillEl.style.cursor = 'grab';
+      }
     });
 
     // --- Settings ---
