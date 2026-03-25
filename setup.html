@@ -10,62 +10,250 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #1a1a2e;
       color: #eee;
-      width: 380px;
-      height: 280px;
+      width: 420px;
+      height: 460px;
       overflow: hidden;
       user-select: none;
       -webkit-app-region: no-drag;
-      display: flex;
+    }
+    .container { padding: 32px; width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .logo { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .tagline { font-size: 13px; color: #888; margin-bottom: 24px; }
+
+    .steps { flex: 1; }
+
+    .step {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .step.active { display: flex; }
+
+    .step-header {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    .step-number {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #4a9eff;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
     }
-    .container { padding: 32px; width: 100%; }
-    .logo { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-    .tagline { font-size: 13px; color: #888; margin-bottom: 28px; }
-    label { display: block; font-size: 12px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
-    input[type="email"] {
+
+    input[type="text"],
+    input[type="password"] {
       width: 100%; padding: 10px 12px; font-size: 14px;
       background: #16163a; border: 1px solid #2e2e52; border-radius: 6px;
-      color: #eee; outline: none; margin-bottom: 20px;
-      font-family: inherit;
+      color: #eee; outline: none; font-family: inherit;
       transition: border-color 0.2s;
     }
-    input[type="email"]:focus { border-color: #4a9eff; }
-    input[type="email"]::placeholder { color: #555; }
-    .btn-start {
-      width: 100%; padding: 11px; font-size: 14px; font-weight: 600;
-      background: #4a9eff; color: #fff; border: none; border-radius: 6px;
-      cursor: pointer; font-family: inherit; transition: background 0.2s;
+    input:focus { border-color: #4a9eff; }
+    input::placeholder { color: #555; }
+
+    .radio-group { display: flex; flex-direction: column; gap: 10px; }
+    .radio-option {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px; background: #16163a; border: 1px solid #2e2e52;
+      border-radius: 8px; cursor: pointer; transition: border-color 0.2s;
     }
-    .btn-start:hover { background: #3b8be8; }
-    .btn-start:active { opacity: 0.85; }
-    .error { font-size: 12px; color: #ff6b6b; margin-top: -14px; margin-bottom: 14px; display: none; }
+    .radio-option:hover { border-color: #4a9eff; }
+    .radio-option.selected { border-color: #4a9eff; background: #1c1c40; }
+    .radio-option input[type="radio"] { margin-top: 2px; accent-color: #4a9eff; }
+    .radio-label { font-size: 13px; font-weight: 600; color: #eee; }
+    .radio-desc { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; }
+    .btn {
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 6px; cursor: pointer;
+      font-family: inherit; transition: background 0.2s, opacity 0.2s;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn-primary { background: #4a9eff; color: #fff; flex: 1; }
+    .btn-primary:hover { background: #3b8be8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: #2a2a4a; color: #ccc; }
+    .btn-secondary:hover { background: #353560; }
+
+    .verify-status {
+      font-size: 12px; margin-top: 4px; min-height: 16px;
+    }
+    .verify-ok { color: #4ade80; }
+    .verify-err { color: #ff6b6b; }
+
+    .progress-dots {
+      display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #2e2e52; transition: background 0.2s;
+    }
+    .dot.active { background: #4a9eff; }
+    .dot.done { background: #4ade80; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">Yiddish Voice</div>
     <div class="tagline">Yiddish speech-to-text</div>
-    <label for="emailInput">Your Email</label>
-    <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email">
-    <div class="error" id="errorMsg">Please enter a valid email address.</div>
-    <button class="btn-start" id="btnStart">Get Started</button>
+
+    <div class="progress-dots">
+      <div class="dot active" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+      <div class="dot" id="dot3"></div>
+    </div>
+
+    <div class="steps">
+      <!-- Step 1: Create account -->
+      <div class="step active" id="step1">
+        <div class="step-header"><span class="step-number">1</span> Create your account</div>
+        <div class="step-desc">Sign up at asr.kohnai.ai to get started. You'll receive free credits to try the service.</div>
+        <button class="btn btn-primary" id="btnOpenSignup" style="flex:none">Open asr.kohnai.ai in browser</button>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnNext1">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: API Key -->
+      <div class="step" id="step2">
+        <div class="step-header"><span class="step-number">2</span> Enter your API key</div>
+        <div class="step-desc">Copy your API key from the dashboard and paste it here.</div>
+        <input type="password" id="apiKeyInput" placeholder="ak_live_...">
+        <button class="btn btn-secondary" id="btnVerify" style="align-self:flex-start">Verify key</button>
+        <div class="verify-status" id="verifyStatus"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btnBack2">Back</button>
+          <button class="btn btn-primary" id="btnNext2" disabled>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Choose model -->
+      <div class="step" id="step3">
+        <div class="step-header"><span class="step-number">3</span> Choose your model</div>
+        <div class="radio-group" id="modelGroup">
+          <label class="radio-option selected">
+            <input type="radio" name="model" value="gemini" checked>
+            <div>
+              <div class="radio-label">Gemini (Fine-tuned)</div>
+              <div class="radio-desc">Best quality for Yiddish. Uses a custom fine-tuned Gemini model.</div>
+            </div>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="model" value="whisper">
+            <div>
+              <div class="radio-label">Whisper</div>
+              <div class="radio-desc">Open-source model. Good general accuracy with fast response.</div>
+            </div>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="model" value="yiddishlabs">
+            <div>
+              <div class="radio-label">YiddishLabs</div>
+              <div class="radio-desc">Community Yiddish model. Experimental.</div>
+            </div>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btnBack3">Back</button>
+          <button class="btn btn-primary" id="btnFinish">Start using Yiddish Voice</button>
+        </div>
+      </div>
+    </div>
   </div>
+
   <script>
     const api = window.electronAPI;
-    document.getElementById('btnStart').addEventListener('click', async () => {
-      const email = document.getElementById('emailInput').value.trim();
-      const err = document.getElementById('errorMsg');
-      if (!email || !email.includes('@')) {
-        err.style.display = 'block';
+    let currentStep = 1;
+    let verifiedKey = '';
+
+    function showStep(n) {
+      currentStep = n;
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('step' + n).classList.add('active');
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById('dot' + i);
+        dot.classList.remove('active', 'done');
+        if (i < n) dot.classList.add('done');
+        if (i === n) dot.classList.add('active');
+      }
+    }
+
+    // Step 1: Open signup
+    document.getElementById('btnOpenSignup').addEventListener('click', () => {
+      api.send('open-url', 'https://asr.kohnai.ai');
+    });
+    document.getElementById('btnNext1').addEventListener('click', () => showStep(2));
+
+    // Step 2: Verify key
+    document.getElementById('btnVerify').addEventListener('click', async () => {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      const status = document.getElementById('verifyStatus');
+      if (!key) {
+        status.textContent = 'Please enter an API key.';
+        status.className = 'verify-status verify-err';
         return;
       }
-      err.style.display = 'none';
-      await api.invoke('complete-setup', { email });
+      status.textContent = 'Verifying...';
+      status.className = 'verify-status';
+      try {
+        const result = await api.invoke('check-balance', key);
+        if (result.error) {
+          status.textContent = 'Invalid key: ' + result.error;
+          status.className = 'verify-status verify-err';
+          document.getElementById('btnNext2').disabled = true;
+        } else {
+          status.textContent = 'Valid! Balance: ' + result.credits + ' credits';
+          status.className = 'verify-status verify-ok';
+          verifiedKey = key;
+          document.getElementById('btnNext2').disabled = false;
+        }
+      } catch (err) {
+        status.textContent = 'Connection error';
+        status.className = 'verify-status verify-err';
+      }
+    });
+    document.getElementById('btnBack2').addEventListener('click', () => showStep(1));
+    document.getElementById('btnNext2').addEventListener('click', () => showStep(3));
+
+    // Step 3: Model selection
+    document.querySelectorAll('.radio-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        opt.querySelector('input[type="radio"]').checked = true;
+      });
+    });
+
+    document.getElementById('btnBack3').addEventListener('click', () => showStep(2));
+    document.getElementById('btnFinish').addEventListener('click', async () => {
+      const model = document.querySelector('input[name="model"]:checked').value;
+      const config = await api.invoke('get-config');
+      config.API_KEY = verifiedKey;
+      config.MODEL = model;
+      config.setupComplete = true;
+      await api.invoke('save-config', config);
       window.close();
     });
-    document.getElementById('emailInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.getElementById('btnStart').click();
+
+    // Allow Enter to verify
+    document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btnVerify').click();
     });
   </script>
 </body>

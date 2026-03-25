@@ -202,39 +202,6 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Provider selector */
-    #provider-select {
-
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 10px;
-      font-family: system-ui, sans-serif;
-      padding: 4px 6px;
-      cursor: pointer;
-      outline: none;
-      appearance: none;
-      -webkit-appearance: none;
-      max-width: 70px;
-      transition: all 0.2s ease;
-    }
-
-    #provider-select:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    #provider-select:focus {
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    #provider-select option {
-      background: #1a1a1a;
-      color: #e4e4e7;
-      padding: 4px;
-    }
-
     /* Settings gear */
     #settings-btn {
 
@@ -267,6 +234,38 @@
 
     #settings-btn:hover svg {
       transform: rotate(30deg);
+    }
+
+    /* Credit badge */
+    #credit-badge {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.45);
+      white-space: nowrap;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    #credit-badge.low {
+      color: #facc15;
+    }
+
+    /* Setup button */
+    #setup-btn {
+      display: none;
+      align-items: center;
+      background: rgba(250, 204, 21, 0.15);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 6px;
+      color: #facc15;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: system-ui, sans-serif;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    #setup-btn:hover {
+      background: rgba(250, 204, 21, 0.25);
     }
 
     /* Check mark for pasted state */
@@ -312,15 +311,16 @@
       <div id="waveform"></div>
     </div>
 
-    <!-- Provider mini-select -->
-    <select id="provider-select" title="Transcription provider">
-      <option value="gemini">Gemini</option>
-      <option value="gemini-direct">Gemini 3.1</option>
-      <option value="runpod-whisper">Whisper</option>
-      <option value="runpod-omniasr">OmniASR</option>
-      <option value="vertex">Vertex FT</option>
-      <option value="runpod-pod">Pod 24/7</option>
-    </select>
+    <!-- Credit balance -->
+    <span id="credit-badge" title="Credit balance"></span>
+
+    <!-- Setup button (shown when no API key) -->
+    <button id="setup-btn" title="Setup" style="display:none">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span style="font-size:10px;margin-left:2px">Setup</span>
+    </button>
 
     <!-- Settings -->
     <button id="settings-btn" title="Settings">
@@ -344,7 +344,8 @@
     const recDot = document.getElementById('rec-dot');
     const spinner = document.getElementById('spinner');
     const waveform = document.getElementById('waveform');
-    const providerSelect = document.getElementById('provider-select');
+    const creditBadge = document.getElementById('credit-badge');
+    const setupBtn = document.getElementById('setup-btn');
     const settingsBtn = document.getElementById('settings-btn');
 
     // --- State ---
@@ -426,15 +427,10 @@
       api.send('open-settings');
     });
 
-    // --- Provider change persistence ---
-    providerSelect.addEventListener('change', async () => {
-      try {
-        const cfg = await api.invoke('get-config');
-        cfg.provider = providerSelect.value;
-        await api.invoke('save-config', cfg);
-      } catch (err) {
-        console.error('Failed to save provider:', err);
-      }
+    // --- Setup button ---
+    setupBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      api.send('open-setup');
     });
 
     // --- State Transitions ---
@@ -578,11 +574,9 @@
           const arrayBuffer = await blob.arrayBuffer();
           const base64Audio = arrayBufferToBase64(arrayBuffer);
 
-          const provider = providerSelect.value;
           api.send('transcribe', {
             audioBase64: base64Audio,
             mimeType: 'audio/webm;codecs=opus',
-            provider: provider,
           });
         };
 
@@ -628,6 +622,11 @@
         return;
       }
 
+      // Update credit badge from response
+      if (typeof data.remaining === 'number') {
+        updateCreditBadge(data.remaining);
+      }
+
       setState('pasted');
     });
 
@@ -641,20 +640,41 @@
       }
     });
 
-    // Load saved provider from config
-    async function loadSavedProvider() {
+    // --- Credit badge ---
+    function updateCreditBadge(credits) {
+      creditBadge.classList.remove('low');
+      if (typeof credits === 'number') {
+        creditBadge.textContent = '\u2B21 ' + credits + ' cr';
+        if (credits < 50) {
+          creditBadge.classList.add('low');
+          creditBadge.textContent = '\u26A0 Low credits';
+        }
+      }
+    }
+
+    // Load config and fetch balance on startup
+    async function initApp() {
       try {
         const cfg = await api.invoke('get-config');
-        if (cfg && cfg.provider) {
-          providerSelect.value = cfg.provider;
+        if (!cfg || !cfg.API_KEY) {
+          // No API key — show setup button
+          setupBtn.style.display = 'flex';
+          creditBadge.textContent = '';
+          return;
+        }
+        setupBtn.style.display = 'none';
+        // Fetch credit balance
+        const result = await api.invoke('check-balance');
+        if (!result.error && typeof result.credits === 'number') {
+          updateCreditBadge(result.credits);
         }
       } catch (err) {
-        console.error('Failed to load config:', err);
+        console.error('Failed to init:', err);
       }
     }
 
     // Initialize
-    loadSavedProvider();
+    initApp();
     setState('idle');
   </script>
 </body>

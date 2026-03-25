@@ -14,7 +14,7 @@ const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
 const config = require("./config");
-const { transcribe } = require("./transcription");
+const { transcribe, httpsGet } = require("./transcription");
 
 // ---------------------------------------------------------------------------
 // Single-instance lock
@@ -155,8 +155,8 @@ function openSetupWindow() {
   }
 
   setupWindow = new BrowserWindow({
-    width: 380,
-    height: 280,
+    width: 420,
+    height: 460,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -189,7 +189,7 @@ function openSettingsWindow() {
 
   settingsWindow = new BrowserWindow({
     width: 400,
-    height: 360,
+    height: 480,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -350,11 +350,11 @@ function setupIpcHandlers() {
   ipcMain.on("stop-recording", () => {});
 
   // -- Transcription ---------------------------------------------------------
-  ipcMain.on("transcribe", async (event, { audioBase64, provider }) => {
+  ipcMain.on("transcribe", async (event, { audioBase64 }) => {
     try {
       const cfg = config.load();
       const audioBuffer = Buffer.from(audioBase64, "base64");
-      const result = await transcribe(audioBuffer, provider, cfg);
+      const result = await transcribe(audioBuffer, cfg.MODEL, cfg);
 
       if (event.sender.isDestroyed()) return;
 
@@ -391,6 +391,8 @@ function setupIpcHandlers() {
         text: result.text,
         provider: result.provider,
         latencyMs: result.latencyMs,
+        creditsUsed: result.creditsUsed,
+        remaining: result.remaining,
       });
     } catch (err) {
       console.error("Transcription error:", err);
@@ -442,25 +444,34 @@ function setupIpcHandlers() {
       setupWindow.destroy();
     }
 
-    // Submit email to registration form (fire-and-forget)
-    if (email) {
-      const https = require("https");
-      const body = `entry.813690680=${encodeURIComponent(email)}`;
-      const req = https.request({
-        hostname: "docs.google.com",
-        path: "/forms/d/e/1FAIpQLSdY6sbIQOaFC2-cT3EosSGc-N3WcxfLNQimG7nB5gJs-8WsTQ/formResponse",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength(body),
-        },
-      });
-      req.on("error", () => {}); // non-fatal
-      req.write(body);
-      req.end();
-    }
-
     return { success: true };
+  });
+
+  // -- Check credit balance ---------------------------------------------------
+  ipcMain.handle("check-balance", async (_event, apiKeyOverride) => {
+    try {
+      const cfg = config.load();
+      const key = apiKeyOverride || cfg.API_KEY;
+      if (!key) return { error: "No API key configured" };
+      const base = cfg.API_BASE || "https://api.kohnai.ai";
+      const result = await httpsGet(`${base}/v1/credits`, {
+        Authorization: `Bearer ${key}`,
+      });
+      return { credits: result.credits };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
+  // -- Open URL in system browser ---------------------------------------------
+  ipcMain.on("open-url", (_event, url) => {
+    const { shell } = require("electron");
+    shell.openExternal(url);
+  });
+
+  // -- Open setup window from renderer ----------------------------------------
+  ipcMain.on("open-setup", () => {
+    openSetupWindow();
   });
 
   // -- Window mouse-event forwarding -----------------------------------------

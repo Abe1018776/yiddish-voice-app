@@ -8,9 +8,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'stop-recording',
       'transcribe',
       'open-settings',
+      'open-setup',
       'set-ignore-mouse',
       'window-drag-start',
       'move-window',
+      'open-url',
     ];
     if (allowed.includes(channel)) {
       ipcRenderer.send(channel, data);
@@ -29,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'copy-to-clipboard',
       'select-file',
       'complete-setup',
+      'check-balance',
     ];
     if (allowed.includes(channel)) {
       return ipcRenderer.invoke(channel, data);
