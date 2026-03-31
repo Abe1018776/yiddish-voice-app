@@ -1,0 +1,31 @@
+# Whisper Yiddish Fine-Tuning Dependencies
+# Install: pip install -r requirements.txt
+
+# Core ML
+torch>=2.1.0
+torchaudio>=2.1.0
+transformers>=4.40.0
+datasets>=2.18.0
+accelerate>=0.27.0
+evaluate>=0.4.0
+jiwer>=3.0.0  # WER computation (used by evaluate)
+
+# Audio processing
+soundfile>=0.12.0
+librosa>=0.10.0
+
+# Training utilities
+tensorboard>=2.15.0
+wandb>=0.16.0  # optional: for experiment tracking
+
+# QLoRA support (optional - only needed with --use_qlora)
+peft>=0.8.0
+bitsandbytes>=0.43.0
+
+# Model export
+ctranslate2>=4.0.0
+faster-whisper>=1.0.0
+
+# Data
+scipy>=1.11.0
+numpy>=1.24.0
