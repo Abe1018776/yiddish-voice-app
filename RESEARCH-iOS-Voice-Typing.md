@@ -28,66 +28,48 @@
 
 ### The Core Challenge: iOS Keyboard Extensions + Microphone
 
-**Critical finding**: Apple's original iOS 8 documentation stated keyboard extensions have "no access to the device microphone." However, **starting around iOS 10+**, Apple relaxed this restriction:
+**IMPORTANT CORRECTION**: iOS keyboard extensions **CANNOT directly access the microphone**. This restriction has been in place since iOS 8 and **remains in effect as of iOS 18+/2026**. Even with "Allow Full Access" / `RequestsOpenAccess`, `AVAudioSession` calls in the keyboard extension get permission errors.
 
-- With **"Allow Full Access"** enabled (user must grant this in Settings), keyboard extensions gain expanded capabilities including **network access** and access to shared containers with the containing app.
-- **Microphone access for keyboard extensions** requires:
-  1. `RequestsOpenAccess` set to `true` in the extension's `Info.plist`
-  2. User enabling "Allow Full Access" in Settings
-  3. `NSMicrophoneUsageDescription` in the containing app's `Info.plist`
-  4. The user granting microphone permission when prompted
+**How voice-typing keyboard apps actually work around this:**
 
-Apps like Typeless confirm this works — they are listed as keyboard extensions on the App Store and provide voice input.
+1. The keyboard extension shows a **mic button**
+2. Tapping it **opens the containing (main) app** via a URL scheme
+3. The **main app** records audio and runs transcription (cloud or on-device)
+4. Transcribed text is written to a **shared App Group container** (`UserDefaults(suiteName:)` or shared file)
+5. User switches back to the keyboard, which **reads the transcription and inserts it** via `textDocumentProxy.insertText()`
+
+This is the pattern used by apps like [dictate.](https://www.producthunt.com/products/dictate) and keyboards built with [KeyboardKit](https://github.com/KeyboardKit/KeyboardKit). KeyboardKit Pro v9.x includes a Dictation feature that streamlines this flow but still routes audio capture through the containing app under the hood.
 
 ### Architecture Options
 
-#### Option A: Keyboard Extension with Cloud Transcription (Typeless approach)
+#### Option A: Keyboard Extension + Main App for Recording (How real apps do it)
 ```
-┌─────────────────────────────────────┐
-│  iOS Custom Keyboard Extension      │
-│  ┌─────────┐  ┌──────────────────┐  │
-│  │ Mic     │→ │ Audio Recording   │  │
-│  │ Button  │  │ (AVAudioEngine)   │  │
-│  └─────────┘  └────────┬─────────┘  │
-│                         │            │
-│              ┌──────────▼─────────┐  │
-│              │ Send to Cloud API  │  │
-│              │ (your KohnAI API)  │  │
-│              └──────────┬─────────┘  │
-│                         │            │
-│              ┌──────────▼─────────┐  │
-│              │ Insert text via    │  │
-│              │ textDocumentProxy  │  │
-│              └────────────────────┘  │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  Custom Keyboard Extension                          │
+│  ┌─────────┐                                        │
+│  │ Mic     │── tap ──→ opens main app via URL scheme│
+│  │ Button  │                                        │
+│  └─────────┘                                        │
+│                                                     │
+│  ← reads transcription from shared App Group ──┐    │
+│  → inserts via textDocumentProxy.insertText()  │    │
+└────────────────────────────────────────────────┼────┘
+                                                 │
+┌────────────────────────────────────────────────┼────┐
+│  Main App (containing app)                     │    │
+│  ┌────────────────┐  ┌──────────────────────┐  │    │
+│  │ Record Audio   │→ │ Transcribe           │  │    │
+│  │ (AVAudioEngine)│  │ (Cloud API or        │──┘    │
+│  │                │  │  on-device Whisper)   │       │
+│  └────────────────┘  └──────────────────────┘       │
+│                                                     │
+│  Writes result to shared App Group container        │
+└─────────────────────────────────────────────────────┘
 ```
-**Pros**: Small app size, best accuracy, can use your existing KohnAI API
-**Cons**: Requires internet, latency, ongoing server costs
+**Pros**: Works within Apple's rules, can use full device resources for transcription
+**Cons**: Requires app switch (brief UX friction), user must return to keyboard after recording
 
-#### Option B: Keyboard Extension with On-Device Whisper (whisperflow.de approach)
-```
-┌─────────────────────────────────────┐
-│  iOS Custom Keyboard Extension      │
-│  ┌─────────┐  ┌──────────────────┐  │
-│  │ Mic     │→ │ Audio Recording   │  │
-│  │ Button  │  │ (AVAudioEngine)   │  │
-│  └─────────┘  └────────┬─────────┘  │
-│                         │            │
-│              ┌──────────▼─────────┐  │
-│              │ whisper.cpp +      │  │
-│              │ Core ML (on-device)│  │
-│              └──────────┬─────────┘  │
-│                         │            │
-│              ┌──────────▼─────────┐  │
-│              │ Insert text via    │  │
-│              │ textDocumentProxy  │  │
-│              └────────────────────┘  │
-└─────────────────────────────────────┘
-```
-**Pros**: Works offline, no server costs, fast, private
-**Cons**: Larger app size (~40-150MB for model), less accurate for Yiddish without fine-tuned model, limited by device RAM (keyboard extensions have ~50MB memory limit — this is a real constraint)
-
-#### Option C: Companion App + Clipboard (workaround approach)
+#### Option B: Standalone App + Clipboard (simplest approach)
 ```
 ┌─────────────────────┐    ┌─────────────────────┐
 │  Main App            │    │  Any App (Messages)  │
@@ -99,11 +81,47 @@ Apps like Typeless confirm this works — they are listed as keyboard extensions
 │  └────────────────┘  │    └──────────────────────┘
 └─────────────────────┘
 ```
-**Pros**: No keyboard extension restrictions, full device resources
+**Pros**: No keyboard extension complexity, full device resources, simplest to build
 **Cons**: Not seamless — user must switch apps and paste
 
-#### Option D: Hybrid (RECOMMENDED for your use case)
-Keyboard extension for quick voice input (cloud API), plus a standalone app for longer transcriptions with on-device Whisper.
+#### Option C: Hybrid (RECOMMENDED for your use case)
+Build both:
+- **Phase 1**: Standalone app with record → transcribe → copy to clipboard
+- **Phase 2**: Add keyboard extension with mic button that opens main app for recording, then auto-inserts transcribed text
+
+---
+
+## On-Device Whisper Options for iOS
+
+### WhisperKit (RECOMMENDED)
+[WhisperKit by Argmax](https://github.com/argmaxinc/WhisperKit) — the most mature Swift-native solution, presented at ICML 2025.
+
+- **Integration**: Swift Package Manager, Xcode 16+, iOS 15+
+- **Performance**: 0.45s mean latency for streaming, 2.2% WER with Large v3 Turbo
+- **Models**: Pre-converted Core ML models on HuggingFace (tiny ~30MB to large-v3 ~1.5GB)
+- **Custom models**: The `whisperkittools` companion repo lets you **convert your own fine-tuned Yiddish Whisper model to Core ML format** — this is critical for your use case
+- **Streaming**: Yes, real-time with VAD and word timestamps
+
+```swift
+import WhisperKit
+let pipe = try await WhisperKit()
+let result = try await pipe.transcribe(audioPath: "audio.wav")
+```
+
+### whisper.cpp
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp) — C/C++ port with XCFramework available via SPM.
+
+- ARM NEON + Accelerate framework + Metal GPU + optional Core ML encoder
+- Has built-in VAD
+- iOS example exists (Objective-C), demonstrated on iPhone 13 fully offline
+- Core ML gives 3x speedup on Apple Neural Engine
+- More manual integration than WhisperKit
+
+### SwiftWhisper
+Swift wrapper around whisper.cpp. Simpler API. Core ML support. Good [Medium tutorial](https://medium.com/@jonataneduard/building-a-real-time-on-device-speech-to-text-in-swiftui-with-whisper-core-ml-ios-17-b1d468e44f4d) available.
+
+### Apple's SpeechAnalyzer (iOS 26+, WWDC 2025)
+Apple's new on-device speech framework. Fast (~45s for 34min audio), auto language detection. **Does NOT support Yiddish** — only ~60 languages. Not viable for your primary use case but could serve as English/Hebrew fallback.
 
 ---
 
@@ -112,89 +130,91 @@ Keyboard extension for quick voice input (cloud API), plus a standalone app for 
 ### Phase 1: iOS App with Cloud Transcription
 Build a native Swift iOS app with:
 
-1. **Containing App** (main app):
+1. **Main App**:
    - Audio recording with `AVAudioEngine`
    - Send audio to your existing KohnAI API (`https://api.kohnai.ai/v1/transcribe`)
    - Display transcription, copy to clipboard
    - Settings (API key, language, model selection)
    - Transcription history
+   - Handle incoming URL scheme requests from keyboard extension
 
 2. **Custom Keyboard Extension**:
-   - Mic button on the keyboard
-   - Record audio when held/tapped
-   - Send to KohnAI API for transcription
-   - Insert result via `textDocumentProxy.insertText()`
-   - Requires "Allow Full Access" for network + mic
+   - Yiddish keyboard layout (Hebrew script characters)
+   - Mic button that opens main app via URL scheme for recording
+   - Reads transcription from shared App Group container
+   - Inserts result via `textDocumentProxy.insertText()`
+   - Requires "Allow Full Access" for network access to shared container
 
-### Phase 2: On-Device Whisper (Optional)
-Add offline capability using whisper.cpp:
+### Phase 2: On-Device Whisper
+Add offline capability using WhisperKit:
 
-1. Bundle a Whisper model (tiny or base for keyboard, larger for main app)
-2. Use Core ML acceleration for 3x speed on Apple Neural Engine
-3. Fall back to cloud when higher accuracy needed
+1. Convert your fine-tuned Yiddish Whisper model to Core ML using `whisperkittools`
+2. Bundle or download on first launch (use On-Demand Resources for App Store size)
+3. Use Core ML acceleration on Apple Neural Engine
+4. Fall back to cloud when higher accuracy needed or offline model confidence is low
+
+### Phase 3: AI Text Cleanup (Typeless-like features)
+- Send transcription through LLM API for filler word removal, grammar cleanup
+- Tone adaptation based on target app context
+- Translation support
 
 ### Key Technologies
 
 | Component | Technology |
 |-----------|-----------|
 | Language | Swift / SwiftUI |
-| Audio Recording | AVAudioEngine / AVAudioRecorder |
+| Audio Recording | AVAudioEngine |
 | Cloud Transcription | URLSession → KohnAI API |
-| On-Device Transcription | whisper.cpp with Core ML |
+| On-Device Transcription | WhisperKit (preferred) or whisper.cpp with Core ML |
 | Keyboard Extension | UIInputViewController + textDocumentProxy |
-| Text Cleanup (optional) | Send to LLM API for filler removal |
-
-### Key Libraries / Dependencies
-
-- **whisper.cpp** — `github.com/ggerganov/whisper.cpp` (C/C++, has iOS example in Obj-C)
-  - Core ML support for 3x speed on Apple Neural Engine
-  - Runs fully on-device on iPhone
-  - Demonstrated working on iPhone 13
-- **WhisperKit** — `github.com/argmaxinc/WhisperKit` (pure Swift wrapper, optimized for Apple)
-  - Native Swift API, easier to integrate than raw whisper.cpp
-  - Core ML optimized
-  - Supports all Whisper model sizes
-- **Swift Package Manager** for dependencies
-
-### Memory Constraints for Keyboard Extension
-
-Keyboard extensions have a ~50MB memory limit (can vary by device). This means:
-- **Whisper tiny** (~75MB model) may be tight but possible with quantization
-- **Whisper base** (~150MB model) likely too large for the extension
-- **Cloud API** is the safer bet for the keyboard extension
-- Use on-device Whisper in the **main app** where you have full resources
+| Keyboard Framework | KeyboardKit (optional, simplifies keyboard UI) |
+| Shared Data | App Groups + UserDefaults(suiteName:) |
+| Text Cleanup (optional) | LLM API for filler removal / formatting |
 
 ### Xcode Project Structure
 ```
 YiddishVoice/
-├── YiddishVoice/                    # Main app target
+├── YiddishVoice/                     # Main app target
 │   ├── App.swift
 │   ├── ContentView.swift
-│   ├── AudioRecorder.swift          # AVAudioEngine recording
-│   ├── TranscriptionService.swift   # Cloud API client
-│   ├── WhisperService.swift         # On-device whisper.cpp
+│   ├── AudioRecorder.swift           # AVAudioEngine recording
+│   ├── TranscriptionService.swift    # Cloud API client (KohnAI)
+│   ├── WhisperService.swift          # On-device WhisperKit
+│   ├── URLSchemeHandler.swift        # Handle keyboard → app flow
 │   ├── HistoryView.swift
 │   └── SettingsView.swift
-├── YiddishVoiceKeyboard/            # Keyboard extension target
-│   ├── KeyboardViewController.swift # UIInputViewController
-│   ├── KeyboardView.swift           # SwiftUI keyboard layout
-│   ├── AudioRecorder.swift          # Shared recording logic
-│   └── Info.plist                   # RequestsOpenAccess = true
-├── Shared/                          # Shared framework
-│   ├── APIClient.swift              # KohnAI API calls
-│   └── Config.swift                 # Shared configuration
-└── Models/                          # Whisper model files
-    └── ggml-tiny.bin
+├── YiddishVoiceKeyboard/             # Keyboard extension target
+│   ├── KeyboardViewController.swift  # UIInputViewController
+│   ├── KeyboardView.swift            # SwiftUI keyboard layout
+│   ├── DictationHandler.swift        # Open main app + read result
+│   └── Info.plist                    # RequestsOpenAccess = true
+├── Shared/                           # Shared framework (App Group)
+│   ├── APIClient.swift               # KohnAI API calls
+│   ├── SharedStore.swift             # App Group UserDefaults
+│   └── Config.swift                  # Shared configuration
+└── Models/                           # Whisper model files
+    └── (downloaded on first launch via WhisperKit)
 ```
+
+---
+
+## Yiddish-Specific Considerations
+
+- Whisper supports Yiddish (`yi`) but it's a **low-resource language** — accuracy is poor without fine-tuning. Your existing fine-tuned model on RunPod is essential.
+- **No publicly available fine-tuned Yiddish Whisper model** for on-device use. You'd convert your own using `whisperkittools`.
+- Yiddish uses **Hebrew script** — the keyboard extension needs a Hebrew-character layout (or Yiddish-specific YIVO layout).
+- Apple's `SpeechAnalyzer` and `SFSpeechRecognizer` do **NOT support Yiddish**, making Whisper (cloud or on-device) the only viable STT engine.
+- For Hebrew (related language), community fine-tuned models like [Ivrit.ai](https://github.com/ShmuelRonen/hebrew_whisper) have shown major accuracy improvements — similar to what you're already doing for Yiddish.
 
 ---
 
 ## App Store Considerations
 
-1. **Privacy**: Must declare microphone usage, network usage. If using cloud transcription, need a privacy policy explaining data handling.
-2. **Allow Full Access**: Users are often reluctant to grant "Allow Full Access" to keyboards. Your app description should clearly explain why it's needed (microphone for voice input, network for transcription).
-3. **Keyboard Extension Review**: Apple reviews keyboard extensions carefully. Ensure you're not logging keystrokes or sending data you shouldn't.
-4. **Model Size**: If bundling Whisper models, the app will be larger. Use App Thinning / On-Demand Resources to manage this.
+1. **Privacy**: Must declare microphone usage (`NSMicrophoneUsageDescription`), network usage. Need a privacy policy explaining data handling for cloud transcription.
+2. **Allow Full Access**: Users are often reluctant to grant this. App description should clearly explain why it's needed (shared data between keyboard and app).
+3. **Keyboard Extension Review**: Apple scrutinizes these carefully. Must work for basic typing without Full Access. Voice features require Full Access.
+4. **Model Size**: If bundling Whisper models, use App Thinning / On-Demand Resources. WhisperKit supports downloading models on first launch.
+5. **Memory limit**: Keyboard extensions have ~70MB memory limit. On-device Whisper must run in the main app, not the extension.
 
 ---
 
@@ -204,10 +224,26 @@ YiddishVoice/
 |---------|---------------------------|-------------|
 | Global hotkey | Ctrl+Shift+Space | Keyboard extension mic button |
 | Audio recording | MediaRecorder (browser) | AVAudioEngine (native) |
-| Transcription | KohnAI API | KohnAI API (same!) |
+| Transcription | KohnAI API | KohnAI API (same backend!) |
 | Auto-paste | PowerShell SendKeys | textDocumentProxy.insertText() |
 | Overlay UI | Electron BrowserWindow | Keyboard extension UI |
 | Settings | Electron settings window | SwiftUI settings in main app |
 | History | JSON file | Core Data / UserDefaults |
 
-The good news: your backend API is already built. The iOS app just needs to be a new frontend that calls the same `https://api.kohnai.ai/v1/transcribe` endpoint.
+**The good news**: Your backend API is already built. The iOS app is a new native frontend calling the same `https://api.kohnai.ai/v1/transcribe` endpoint. Your fine-tuned Yiddish model can also be converted for on-device use via WhisperKit.
+
+---
+
+## Sources
+
+- [WhisperKit - GitHub (Argmax)](https://github.com/argmaxinc/WhisperKit)
+- [whisper.cpp - GitHub](https://github.com/ggml-org/whisper.cpp)
+- [WhisperKit Core ML Models - HuggingFace](https://huggingface.co/argmaxinc/whisperkit-coreml)
+- [KeyboardKit - GitHub](https://github.com/KeyboardKit/KeyboardKit)
+- [Apple Custom Keyboard Docs](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/CustomKeyboard.html)
+- [Apple Developer Forums: Recording in Keyboard Extension](https://developer.apple.com/forums/thread/742601)
+- [SpeechAnalyzer - Apple Developer Docs](https://developer.apple.com/documentation/speech/speechanalyzer)
+- [Building Real-Time On-Device STT in SwiftUI (Medium)](https://medium.com/@jonataneduard/building-a-real-time-on-device-speech-to-text-in-swiftui-with-whisper-core-ml-ios-17-b1d468e44f4d)
+- [Typeless Official Website](https://www.typeless.com/)
+- [Whisper Flow (whisperflow.app)](https://whisperflow.app/)
+- [Whisperflow.de](https://www.whisperflow.de/)
