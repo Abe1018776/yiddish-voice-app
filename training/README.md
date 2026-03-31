@@ -104,20 +104,20 @@ runpod-workers/whisper/handler.py  ← Inference via faster-whisper
 
 ## Training Details
 
-### Hyperparameters (defaults match ivrit.ai's recipe)
+### Hyperparameters (defaults match ivrit.ai's Yiddish recipe)
 
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Base model | whisper-large-v3-turbo | Best speed/quality tradeoff |
-| Learning rate | 1e-5 | ~40x smaller than pre-training LR |
-| LR schedule | Linear decay | With 10% warmup |
-| Batch size | 2 per GPU | With 16x gradient accumulation |
-| Effective batch | 32 | 2 × 16 |
-| Epochs | 2-3 | Performance degrades after ~2 epochs |
-| Weight decay | 0.05 | |
-| Mixed precision | bf16 | |
-| Timestamp prob | 0.5 | 50% of examples include timestamps |
-| Prev text prob | 0.5 | 50% of examples include context |
+| Parameter | Turbo (default) | Large v3 | Notes |
+|-----------|-----------------|----------|-------|
+| Base model | whisper-large-v3-turbo | whisper-large-v3 | |
+| Learning rate | 5e-6 | 1e-5 | Turbo needs lower LR |
+| Warmup steps | 500 | 500 | |
+| LR schedule | Linear decay | Linear decay | |
+| Batch size | 2 per GPU | 2 per GPU | With 16x grad accum |
+| Effective batch | 32 | 32 | |
+| Epochs | 4 | 4 | ivrit.ai used 4 for Yiddish |
+| Weight decay | 0.05 | 0.05 | |
+| Mixed precision | bf16 | bf16 | |
+| Post-training | 200 steps @ 1e-6 | 200 steps @ 1e-6 | On conversational data |
 
 ### Preventing Catastrophic Forgetting
 
@@ -127,19 +127,31 @@ The key challenge in fine-tuning Whisper (especially the Turbo variant) is catas
 2. **Previous text conditioning**: Include previous text context to maintain long-form behavior
 3. **Short training**: Stop at ~2 epochs before the model starts degrading
 
-## Data Source
+## Data Sources
 
-**Meta Omnilingual ASR Corpus** — A collection of spontaneous speech recordings and transcriptions for 348+ under-served languages. The Yiddish subset (`ydd_Hebr`) contains train/dev/test splits with:
+### Meta Omnilingual ASR Corpus
+A collection of spontaneous speech recordings for 348+ under-served languages. The Yiddish subset (`ydd_Hebr`) contains train/dev/test splits with FLAC audio + Hebrew-script transcriptions. CC-BY-4.0 license.
 
-- FLAC audio recordings
-- Hebrew-script transcriptions
-- Speaker and prompt metadata
-- CC-BY-4.0 license
+### ivrit.ai Yiddish Datasets (optional, ~97h extra)
+ivrit.ai has released crowd-sourced Yiddish recordings:
+- `ivrit-ai/crowd-recital-yi-whisper-training` (~78h) — Wikipedia/Michlol article readings
+- `ivrit-ai/crowd-whatsapp-yi-whisper-training` (~19h) — WhatsApp voice recordings
+
+Use `--include_ivritai_data` with `prepare_dataset.py` to download these alongside the Meta corpus.
+
+### Existing ivrit.ai Yiddish Models
+ivrit.ai already released fine-tuned Yiddish Whisper models that can serve as starting points:
+- `ivrit-ai/yi-whisper-large-v3-turbo` (0.8B params)
+- `ivrit-ai/yi-whisper-large-v3` (2B params)
+
+You could use these as `--model_name` instead of the base OpenAI model for further fine-tuning.
 
 ## References
 
 - [ivrit.ai: Training Whisper Turbo](https://www.ivrit.ai/en/2025/02/13/training-whisper/)
 - [ivrit-ai/asr-training](https://github.com/ivrit-ai/asr-training)
+- [ivrit-ai/yi-whisper-large-v3-turbo](https://huggingface.co/ivrit-ai/yi-whisper-large-v3-turbo)
 - [HuggingFace: Fine-Tune Whisper](https://huggingface.co/blog/fine-tune-whisper)
 - [Meta Omnilingual ASR Paper](https://arxiv.org/abs/2511.09690)
 - [facebook/omnilingual-asr-corpus](https://huggingface.co/datasets/facebook/omnilingual-asr-corpus)
+- [ivrit.ai arXiv paper](https://arxiv.org/abs/2307.08720)

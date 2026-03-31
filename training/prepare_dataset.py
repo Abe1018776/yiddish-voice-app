@@ -114,6 +114,34 @@ def load_yiddish_dataset(
     return dataset
 
 
+def load_ivritai_yiddish_datasets(cache_dir: str = None) -> list:
+    """Load ivrit.ai's Yiddish datasets for additional training data.
+
+    These are crowd-sourced Yiddish recordings (~97 hours total):
+    - crowd-recital-yi: ~78h of Wikipedia/Michlol article readings
+    - crowd-whatsapp-yi: ~19h of WhatsApp voice recordings
+
+    Returns:
+        List of datasets with 'audio' and 'transcript' columns.
+    """
+    datasets_out = []
+
+    for name, desc in [
+        ("ivrit-ai/crowd-recital-yi-whisper-training", "Recital (~78h)"),
+        ("ivrit-ai/crowd-whatsapp-yi-whisper-training", "WhatsApp (~19h)"),
+    ]:
+        print(f"Loading {desc}: {name}...")
+        try:
+            ds = load_dataset(name, split="train", cache_dir=cache_dir, trust_remote_code=True)
+            print(f"  Loaded {len(ds)} examples")
+            datasets_out.append(ds)
+        except Exception as e:
+            print(f"  Warning: Could not load {name}: {e}")
+            print(f"  Skipping (these datasets may require HuggingFace authentication)")
+
+    return datasets_out
+
+
 def prepare_dataset(
     output_dir: str,
     cache_dir: str = None,
@@ -223,6 +251,10 @@ def prepare_dataset(
     print(f"  python train_whisper.py \\")
     print(f"    --use_preprocessed {save_path} \\")
     print(f"    --output_dir ./whisper-yiddish-finetuned")
+    print(f"\nTip: For more Yiddish data, also consider ivrit.ai's datasets:")
+    print(f"  - ivrit-ai/crowd-recital-yi-whisper-training (~78h)")
+    print(f"  - ivrit-ai/crowd-whatsapp-yi-whisper-training (~19h)")
+    print(f"  You can combine them using --include_ivritai_data")
 
 
 def parse_args():
@@ -257,6 +289,10 @@ def parse_args():
         "--seed", type=int, default=42,
         help="Random seed (default: 42)"
     )
+    parser.add_argument(
+        "--include_ivritai_data", action="store_true",
+        help="Also include ivrit.ai's Yiddish datasets (~97h extra data)"
+    )
     return parser.parse_args()
 
 
@@ -271,3 +307,22 @@ if __name__ == "__main__":
         seed=args.seed,
         num_proc=args.num_proc,
     )
+
+    # Optionally download ivrit.ai's Yiddish data alongside
+    if args.include_ivritai_data:
+        print("\n" + "=" * 60)
+        print("Loading ivrit.ai Yiddish datasets...")
+        print("=" * 60)
+        ivritai_datasets = load_ivritai_yiddish_datasets(cache_dir=args.cache_dir)
+        if ivritai_datasets:
+            from datasets import concatenate_datasets as concat_ds
+            combined = concat_ds(ivritai_datasets) if len(ivritai_datasets) > 1 else ivritai_datasets[0]
+            ivritai_path = os.path.join(args.output_dir, "ivritai-yiddish-dataset")
+            print(f"Saving ivrit.ai data to {ivritai_path}...")
+            combined.save_to_disk(ivritai_path)
+            print(f"Saved {len(combined)} examples from ivrit.ai")
+            print(f"\nTo combine with Meta data during training, use:")
+            print(f"  python train_whisper.py \\")
+            print(f"    --train_datasets {os.path.join(args.output_dir, 'yiddish-whisper-dataset')}:train \\")
+            print(f"                     {ivritai_path}:train \\")
+            print(f"    --eval_datasets {os.path.join(args.output_dir, 'yiddish-whisper-dataset')}:eval")

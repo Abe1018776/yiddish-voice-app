@@ -5,12 +5,13 @@ Fine-tune OpenAI Whisper for Yiddish ASR.
 Pipeline modeled after ivrit-ai/asr-training with adaptations for Yiddish
 using Meta's Omnilingual ASR Corpus (ydd_Hebr).
 
-Key design decisions (from ivrit.ai's experience):
+Key design decisions (from ivrit.ai's Yiddish Whisper training):
 - Use timestamps + previous text conditioning to prevent catastrophic forgetting
-- Learning rate 1e-5 with linear warmup (~10% of first epoch)
-- Small GPU batch (2) with large gradient accumulation (16) for effective batch of 32
-- Train ~2 epochs (performance degrades later)
+- For Turbo: LR=5e-6 (half of Hebrew recipe); for Large: LR=1e-5
+- Warmup: 500 steps, 4 epochs, batch size 32
+- Two-phase: main training, then 200 steps post-training on conversational data at LR=1e-6
 - Supports QLoRA for memory-constrained setups (single consumer GPU)
+- Can also combine with ivrit.ai's existing Yiddish datasets for more data
 
 Usage:
     # Step 1: Prepare dataset
@@ -192,18 +193,18 @@ def parse_args():
     g = parser.add_argument_group("Training")
     g.add_argument("--output_dir", type=str, required=True,
                    help="Output directory for checkpoints and final model")
-    g.add_argument("--num_train_epochs", type=int, default=3,
-                   help="Number of training epochs (default: 3, ivrit.ai used ~2)")
+    g.add_argument("--num_train_epochs", type=int, default=4,
+                   help="Number of training epochs (default: 4, matching ivrit.ai Yiddish)")
     g.add_argument("--max_steps", type=int, default=-1,
                    help="Max training steps (overrides epochs)")
-    g.add_argument("--learning_rate", type=float, default=1e-5,
-                   help="Learning rate (default: 1e-5, matching ivrit.ai)")
+    g.add_argument("--learning_rate", type=float, default=5e-6,
+                   help="Learning rate (default: 5e-6 for Turbo; use 1e-5 for Large)")
     g.add_argument("--lr_scheduler_type", type=str, default="linear",
                    help="LR scheduler (default: linear, matching ivrit.ai)")
-    g.add_argument("--warmup_ratio", type=float, default=0.1,
-                   help="Warmup ratio (default: 0.1, ~10%% of first epoch)")
-    g.add_argument("--warmup_steps", type=int, default=0,
-                   help="Warmup steps (overrides ratio if > 0)")
+    g.add_argument("--warmup_ratio", type=float, default=0.0,
+                   help="Warmup ratio (default: 0, use warmup_steps instead)")
+    g.add_argument("--warmup_steps", type=int, default=500,
+                   help="Warmup steps (default: 500, matching ivrit.ai Yiddish)")
     g.add_argument("--per_device_train_batch_size", type=int, default=2,
                    help="Per-GPU batch size (default: 2, for 24GB VRAM)")
     g.add_argument("--per_device_eval_batch_size", type=int, default=4,
