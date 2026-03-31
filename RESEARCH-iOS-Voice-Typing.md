@@ -38,7 +38,22 @@
 4. Transcribed text is written to a **shared App Group container** (`UserDefaults(suiteName:)` or shared file)
 5. User switches back to the keyboard, which **reads the transcription and inserts it** via `textDocumentProxy.insertText()`
 
-This is the pattern used by apps like [dictate.](https://www.producthunt.com/products/dictate) and keyboards built with [KeyboardKit](https://github.com/KeyboardKit/KeyboardKit). KeyboardKit Pro v9.x includes a Dictation feature that streamlines this flow but still routes audio capture through the containing app under the hood.
+**How specific apps handle this:**
+
+- **Wispr Flow** ([setup guide](https://docs.wisprflow.ai/articles/7453988911-set-up-the-flow-keyboard-on-iphone)): Tapping "Start Flow" opens the main app which starts a **persistent background audio session**, then returns you to your original app. The main app stays alive in the background with an active mic (configurable: 5 min, 15 min, 1 hour, or indefinite). Subsequent dictation doesn't require app switching. While Flow has the mic, Siri is unavailable.
+- **KeyboardKit Pro v10.2+** (Jan 2026): "In-keyboard dictation" only requires opening the main app **once** to establish the audio session — subsequent dictation happens without app switching.
+- **Typeless**: Similar — keyboard UI triggers main app for cloud-based voice processing.
+
+### Open-Source Reference: WhisperBoard
+
+[**WhisperBoard**](https://github.com/fmachta/WhisperBoard) by fmachta — open-source iOS app implementing exactly this pattern with WhisperKit:
+
+- **Keyboard Extension** (`KeyboardViewController.swift`): Minimal UI with mic button. Does **zero** audio recording. On mic tap: sets a flag in shared `UserDefaults` (App Group), posts a **Darwin notification** (`com.fmachta.whisperboard.startRecording`), then polls the shared container every 0.5s for a result.
+- **Main App** (`TranscriptionService.swift` + `AudioCapture.swift`): Listens for Darwin notification, records via `AVAudioEngine` (16kHz mono PCM), transcribes with **WhisperKit** (Core ML), writes result to shared container, posts Darwin notification back.
+- **IPC**: App Groups for data exchange, Darwin notifications (`CFNotificationCenter`) for cross-process signaling.
+- **Info.plist**: `RequestsOpenAccess = true` in keyboard extension, `NSMicrophoneUsageDescription` in main app only.
+
+**This is the closest open-source reference to what you need to build.**
 
 ### Architecture Options
 
@@ -236,12 +251,17 @@ YiddishVoice/
 
 ## Sources
 
+- [WhisperBoard - Open Source Reference (GitHub)](https://github.com/fmachta/WhisperBoard)
 - [WhisperKit - GitHub (Argmax)](https://github.com/argmaxinc/WhisperKit)
 - [whisper.cpp - GitHub](https://github.com/ggml-org/whisper.cpp)
 - [WhisperKit Core ML Models - HuggingFace](https://huggingface.co/argmaxinc/whisperkit-coreml)
 - [KeyboardKit - GitHub](https://github.com/KeyboardKit/KeyboardKit)
+- [KeyboardKit: New Keyboard Dictation (Jan 2026)](https://keyboardkit.com/blog/2026/01/03/a-brand-new-keyboard-dictation-experience)
 - [Apple Custom Keyboard Docs](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/CustomKeyboard.html)
 - [Apple Developer Forums: Recording in Keyboard Extension](https://developer.apple.com/forums/thread/742601)
+- [Apple Developer Forums: AVAudioSession error in keyboard](https://developer.apple.com/forums/thread/709107)
+- [Wispr Flow iOS Setup Guide](https://docs.wisprflow.ai/articles/7453988911-set-up-the-flow-keyboard-on-iphone)
+- [Swift Forums: How voice dictation keyboards return to previous app](https://forums.swift.org/t/how-do-voice-dictation-keyboard-apps-like-wispr-flow-return-users-to-the-previous-app-automatically/83988)
 - [SpeechAnalyzer - Apple Developer Docs](https://developer.apple.com/documentation/speech/speechanalyzer)
 - [Building Real-Time On-Device STT in SwiftUI (Medium)](https://medium.com/@jonataneduard/building-a-real-time-on-device-speech-to-text-in-swiftui-with-whisper-core-ml-ios-17-b1d468e44f4d)
 - [Typeless Official Website](https://www.typeless.com/)
