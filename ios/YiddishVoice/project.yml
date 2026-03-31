@@ -1,0 +1,48 @@
+name: YiddishVoice
+options:
+  bundleIdPrefix: com.yiddishvoice
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+targets:
+  YiddishVoice:
+    type: application
+    platform: iOS
+    sources:
+      - path: YiddishVoice
+      - path: Shared
+    info:
+      path: YiddishVoice/Info.plist
+    entitlements:
+      path: YiddishVoice/YiddishVoice.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yiddishvoice.app
+        INFOPLIST_FILE: YiddishVoice/Info.plist
+        CODE_SIGN_ENTITLEMENTS: YiddishVoice/YiddishVoice.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: YiddishVoiceKeyboard
+
+  YiddishVoiceKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: YiddishVoiceKeyboard
+      - path: Shared
+    info:
+      path: YiddishVoiceKeyboard/Info.plist
+    entitlements:
+      path: YiddishVoiceKeyboard/YiddishVoiceKeyboard.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yiddishvoice.app.keyboard
+        INFOPLIST_FILE: YiddishVoiceKeyboard/Info.plist
+        CODE_SIGN_ENTITLEMENTS: YiddishVoiceKeyboard/YiddishVoiceKeyboard.entitlements
